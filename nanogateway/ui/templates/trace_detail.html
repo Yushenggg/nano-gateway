@@ -1,0 +1,27 @@
+<div class="modal-backdrop" id="trace-modal-backdrop">
+    <div class="modal-panel">
+        <header class="modal-header">
+            <h3>Trace <code>$trace_id</code></h3>
+            <button type="button" class="modal-close" onclick="closeTraceModal()" aria-label="Close">&times;</button>
+        </header>
+        <div class="modal-body">
+            <h4>Request</h4>
+            <div class="span-card">
+                <pre><code>$request_json</code></pre>
+            </div>
+            <h4>Response</h4>
+            <div class="span-card">
+                <pre><code>$response_json</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+function closeTraceModal() {
+    const el = document.getElementById('trace-modal-backdrop');
+    if (el) el.remove();
+}
+document.getElementById('trace-modal-backdrop').addEventListener('click', function(e) {
+    if (e.target === this) closeTraceModal();
+});
+</script>

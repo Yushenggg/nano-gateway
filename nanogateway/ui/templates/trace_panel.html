@@ -1,0 +1,23 @@
+<div class="stats-grid" id="stats"
+     hx-get="/ui/stats"
+     hx-trigger="load"
+     hx-swap="innerHTML">
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <span class="panel-title">Traces</span>
+        <button type="button" class="btn"
+                hx-get="/ui/traces"
+                hx-target="#trace-results"
+                hx-swap="innerHTML">Reload</button>
+    </div>
+    <div id="trace-results"
+         hx-get="/ui/traces"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+        <p class="muted" style="padding: 16px;">Loading traces...</p>
+    </div>
+</div>
+
+<div id="trace-detail"></div>

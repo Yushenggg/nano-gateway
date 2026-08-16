@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NanoGateway</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js" defer></script>
+    <style>
+        :root {
+            --primary: #fa9442;
+            --bg: #1d3218;
+            --surface: #273f21;
+            --text: #c4dcd6;
+            --text-bright: #e2f0ea;
+            --border: #3b5c31;
+            --success: #4ade80;
+            --danger: #ef4444;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .shell {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 24px 16px;
+        }
+
+        .logo {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 32px;
+            letter-spacing: -0.5px;
+        }
+
+        .logo span { color: var(--text-bright); }
+
+        .nav-item {
+            display: block;
+            padding: 10px 12px;
+            color: var(--text);
+            text-decoration: none;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: var(--border);
+            color: var(--text-bright);
+        }
+
+        .main {
+            padding: 32px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-bright);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-bright);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text);
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 12px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:last-child td { border-bottom: none; }
+
+        tr:hover { background: rgba(250, 148, 66, 0.05); }
+
+        code {
+            background: var(--bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .model {
+            background: var(--bg);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--primary);
+        }
+
+        .status-200 { color: var(--success); }
+        .status-400, .status-401, .status-403, .status-500 { color: var(--danger); }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            font-size: 13px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn:hover { background: var(--border); }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--bg);
+            border-color: var(--primary);
+        }
+
+        .btn-primary:hover { opacity: 0.9; }
+
+        .empty {
+            padding: 48px;
+            text-align: center;
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .filter-bar input {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            font-family: inherit;
+            font-size: 13px;
+            width: 200px;
+        }
+
+        .filter-bar input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+<body x-data="{ page: 'traces' }">
+    <div class="shell">
+        <aside class="sidebar">
+            <div class="logo">nano<span>gateway</span></div>
+            <a class="nav-item" :class="{ active: page === 'traces' }" @click="page = 'traces'">Traces</a>
+            <a class="nav-item" :class="{ active: page === 'config' }" @click="page = 'config'">Config</a>
+        </aside>
+
+        <main class="main">
+            <!-- Traces Page -->
+            <div x-show="page === 'traces'">
+                <div class="header">
+                    <h1>Traces</h1>
+                    <button class="btn btn-primary"
+                            hx-get="/ui/stats"
+                            hx-target="#stats"
+                            hx-swap="innerHTML">
+                        Refresh
+                    </button>
+                </div>
+
+                <div id="stats"
+                     hx-get="/ui/stats"
+                     hx-trigger="load"
+                     hx-swap="innerHTML">
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Recent Requests</span>
+                        <div class="filter-bar">
+                            <input type="text"
+                                   placeholder="Filter by user..."
+                                   x-model="userFilter"
+                                   @keyup.enter="$dispatch('filter-traces')">
+                            <button class="btn"
+                                    hx-get="/ui/traces"
+                                    hx-include="[name='user']"
+                                    hx-target="#trace-table"
+                                    hx-trigger="click, filter-traces from:body"
+                                    hx-swap="innerHTML">
+                                Filter
+                            </button>
+                        </div>
+                        <input type="hidden" name="user" :value="userFilter">
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Timestamp</th>
+                                <th>Model</th>
+                                <th>In Tokens</th>
+                                <th>Out Tokens</th>
+                                <th>Latency</th>
+                                <th>User</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trace-table"
+                               hx-get="/ui/traces"
+                               hx-trigger="load, every 5s"
+                               hx-swap="innerHTML">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Config Page -->
+            <div x-show="page === 'config'" x-cloak>
+                <div class="header">
+                    <h1>Configuration</h1>
+                </div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Setup</span>
+                    </div>
+                    <div style="padding: 20px; font-size: 13px; line-height: 1.8;">
+                        <p style="color: var(--text-bright); margin-bottom: 16px;">Environment Variables</p>
+                        <code style="display: block; padding: 16px; background: var(--bg); border-radius: 6px;">
+NANOGATEWAY_URL=https://api.openai.com/v1
+                        </code>
+                        <p style="color: var(--text-bright); margin-top: 24px; margin-bottom: 16px;">Or use .env file</p>
+                        <code style="display: block; padding: 16px; background: var(--bg); border-radius: 6px;">
+# .env<br>
+NANOGATEWAY_URL=https://api.openai.com/v1
+                        </code>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

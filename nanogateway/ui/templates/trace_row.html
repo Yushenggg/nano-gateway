@@ -1,0 +1,28 @@
+<tbody x-data="{ open: false, loaded: false }">
+    <tr class="session-row" @click="open = !open; if (open && !loaded) { loaded = true; $nextTick(() => htmx.trigger($refs.detailTarget, 'load-detail')) }">
+        <td><code>$trace_id</code></td>
+        <td><span class="model">$model</span></td>
+        <td>$input_tokens</td>
+        <td>$output_tokens</td>
+        <td>$latency</td>
+        <td>$user_id</td>
+        <td><span class="$status_class">$status_code</span></td>
+        <td><span class="muted">$timestamp</span></td>
+        <td>
+            <button type="button" class="btn-view" :aria-expanded="open.toString()">
+                <span x-show="!open">Expand</span>
+                <span x-show="open">Collapse</span>
+            </button>
+        </td>
+    </tr>
+    <tr x-show="open" x-cloak>
+        <td colspan="9" class="expand-cell">
+            <div class="expand-content"
+                 x-ref="detailTarget"
+                 hx-get="$detail_url"
+                 hx-trigger="load-detail"
+                 hx-swap="innerHTML">
+            </div>
+        </td>
+    </tr>
+</tbody>

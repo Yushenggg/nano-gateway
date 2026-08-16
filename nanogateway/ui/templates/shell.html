@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NanoGateway</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js"></script>
+    <style>
+        :root {
+            --primary: #fa9442;
+            --bg: #172713;
+            --surface: #1e2d1a;
+            --text: #b5d1cc;
+            --text-bright: #d4e8e3;
+            --border: #2d4a28;
+            --success: #4ade80;
+            --danger: #ef4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { overflow-x: hidden; width: 100%; }
+        body {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .app-shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; width: 100%; }
+        .sidebar {
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 20px 14px;
+            width: 220px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .logo { font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 28px; }
+        .logo span { color: var(--text-bright); }
+        .nav-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 10px; color: var(--text);
+            text-decoration: none; border-radius: 5px; margin-bottom: 3px;
+            font-size: 12px; cursor: pointer;
+        }
+        .nav-item:hover, .nav-item.active { background: var(--border); color: var(--text-bright); }
+        .nav-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--primary); }
+        .workspace { padding: 24px; overflow-y: auto; overflow-x: hidden; min-width: 0; background: #b5d1cc; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        h1 { font-size: 18px; font-weight: 600; color: #1c3015; }
+        .live-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 11px; color: #14532d;
+            padding: 4px 10px;
+            background: rgba(20, 83, 45, 0.08);
+            border: 1px solid rgba(20, 83, 45, 0.25);
+            border-radius: 12px;
+        }
+        .live-dot {
+            width: 6px; height: 6px; background: #16a34a;
+            border-radius: 50%; animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+        .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+        .stat-value { font-size: 22px; font-weight: 700; color: var(--primary); }
+        .stat-label { font-size: 10px; color: var(--text); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        .panel-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .panel-title { font-size: 12px; font-weight: 600; color: var(--text-bright); }
+        .filters { display: flex; gap: 8px; }
+        .filter-input {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+            color: var(--text-bright); font-family: inherit; font-size: 11px;
+            padding: 5px 10px; width: 120px; outline: none;
+        }
+        .filter-input::placeholder { color: var(--text); opacity: 0.5; }
+        .filter-input:focus { border-color: var(--primary); }
+        .page-size-select {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+            color: var(--text-bright); font-family: inherit; font-size: 11px;
+            padding: 5px 8px; outline: none; cursor: pointer;
+        }
+        .page-size-select:focus { border-color: var(--primary); }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th { text-align: left; padding: 10px 14px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text); border-bottom: 1px solid var(--border); }
+        td { padding: 10px 14px; font-size: 12px; border-bottom: 1px solid var(--border); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        tr:last-child td { border-bottom: none; }
+        code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+        .model { color: var(--primary); }
+        .status-ok { color: var(--success); }
+        .status-err { color: var(--danger); }
+        .expand-row { cursor: pointer; }
+        .expand-row:hover { background: rgba(250, 148, 66, 0.05); }
+        .expand-cell { padding: 0 !important; border: none !important; }
+        .expand-content { padding: 16px; background: var(--bg); border-top: 1px solid var(--border); overflow: hidden; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .detail-block { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 12px; min-width: 0; overflow: hidden; }
+        .detail-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text); margin-bottom: 8px; }
+        .detail-block pre { background: var(--bg); padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 11px; color: var(--text-bright); max-height: 200px; overflow-y: auto; word-break: break-all; white-space: pre-wrap; }
+        .empty { padding: 32px; text-align: center; color: var(--text); font-size: 12px; }
+        [x-cloak] { display: none; }
+        .new-row { animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; background: rgba(250, 148, 66, 0.15); } to { opacity: 1; background: transparent; } }
+
+        .sessions-empty { font-size: 11px; color: var(--text); opacity: 0.6; padding: 16px; text-align: center; }
+        .session-row {
+            display: block; width: 100%; text-align: left;
+            background: none; border: none; border-bottom: 1px solid var(--border); cursor: pointer;
+            padding: 12px 16px; color: var(--text); font-family: inherit;
+        }
+        .session-row:last-child { border-bottom: none; }
+        .session-row:hover { background: var(--border); color: var(--text-bright); }
+        .session-row.active-session { background: rgba(250, 148, 66, 0.12); }
+        .session-id { font-size: 12px; font-family: 'SF Mono', 'Fira Code', monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .session-meta { font-size: 10px; opacity: 0.7; margin-top: 2px; }
+        .session-chip {
+            background: var(--bg); border: 1px solid var(--border); color: var(--primary);
+            font-family: inherit; font-size: 11px; padding: 2px 8px; border-radius: 10px;
+            cursor: pointer; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .session-chip:hover { border-color: var(--primary); }
+        .session-detail { padding: 16px; border-top: 1px solid var(--border); background: var(--bg); }
+        .detail-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .link-btn {
+            background: none; border: 1px solid var(--border); color: var(--primary);
+            font-family: inherit; font-size: 11px; padding: 5px 12px; border-radius: 14px; cursor: pointer;
+        }
+        .link-btn:hover { border-color: var(--primary); }
+        .filter-note {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: 11px; color: var(--primary);
+            background: rgba(250, 148, 66, 0.1);
+            border: 1px solid rgba(250, 148, 66, 0.25);
+            border-radius: 14px; padding: 4px 12px;
+        }
+        .filter-note button {
+            background: none; border: none; color: var(--primary); cursor: pointer;
+            font-family: inherit; font-size: 11px; padding: 0;
+        }
+        .pagination {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 16px; border-top: 1px solid var(--border); gap: 12px;
+        }
+        .page-info { font-size: 11px; color: var(--text); }
+        .page-btns { display: flex; gap: 8px; }
+        .page-btn {
+            background: var(--bg); border: 1px solid var(--border); color: var(--text-bright);
+            font-family: inherit; font-size: 11px; padding: 5px 12px; border-radius: 14px; cursor: pointer;
+        }
+        .page-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+        .page-btn:disabled { opacity: 0.35; cursor: default; }
+        .config-list { padding: 4px 0; }
+        .config-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 12px;
+        }
+        .config-row:last-child { border-bottom: none; }
+        .config-row code { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .config-key {
+            width: 160px; flex-shrink: 0; font-size: 10px; text-transform: uppercase;
+            letter-spacing: 0.5px; color: var(--text);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="logo">nano<span>gateway</span></div>
+            <div class="nav-item $live_cls" data-page="live" onclick="navTo('live')">
+                <div class="nav-dot"></div> Live
+            </div>
+            <div class="nav-item $sessions_cls" data-page="sessions" onclick="navTo('sessions')">
+                <div class="nav-dot"></div> Sessions
+            </div>
+            <div class="nav-item $traces_cls" data-page="traces" onclick="navTo('traces')">
+                <div class="nav-dot"></div> Traces
+            </div>
+            <div class="nav-item $config_cls" data-page="config" onclick="navTo('config')">
+                <div class="nav-dot"></div> Config
+            </div>
+        </aside>
+        <main class="workspace">
+            <div id="page-content"
+                 hx-get="$initial_page"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                $page_content
+            </div>
+        </main>
+    </div>
+
+    <script>
+        var activeSession = null;
+        var sessionFilter = (function() {
+            if (window.location.pathname === '/traces') {
+                var params = new URLSearchParams(window.location.search);
+                return params.get('session') || '';
+            }
+            return '';
+        })();
+
+        var PAGE_ROUTES = {live: '/live', sessions: '/sessions', traces: '/traces', config: '/config'};
+
+        function setActiveNav(page) {
+            document.querySelectorAll('.nav-item').forEach(function(n) {
+                n.classList.toggle('active', n.dataset.page === page);
+            });
+        }
+
+        function navTo(page) {
+            setActiveNav(page);
+            sessionFilter = '';
+            activeSession = null;
+            htmx.ajax('GET', '/ui/page/' + page, {target: '#page-content', swap: 'innerHTML'});
+            history.pushState(null, '', PAGE_ROUTES[page] || '/live');
+        }
+
+        function traceVals(page) {
+            var vals = {page: page || 0, session: sessionFilter};
+            var sel = document.querySelector('.page-size-select[data-page="traces"]');
+            vals.page_size = sel ? (parseInt(sel.value, 10) || 50) : 50;
+            var fs = document.querySelector('[name="f_session"]');
+            var fm = document.querySelector('[name="f_model"]');
+            var fu = document.querySelector('[name="f_user"]');
+            if (fs && fs.value) vals.f_session = fs.value;
+            if (fm && fm.value) vals.f_model = fm.value;
+            if (fu && fu.value) vals.f_user = fu.value;
+            return vals;
+        }
+
+        function sessionsVals(page) {
+            var vals = {page: page || 0};
+            var sel = document.querySelector('.page-size-select[data-page="sessions"]');
+            vals.page_size = sel ? (parseInt(sel.value, 10) || 50) : 50;
+            var q = document.querySelector('[name="q"]');
+            if (q && q.value) vals.q = q.value;
+            return vals;
+        }
+
+        function expandSession(sid, el) {
+            if (activeSession === sid) {
+                activeSession = null;
+                document.getElementById('session-detail').innerHTML = '';
+                document.querySelectorAll('.session-row').forEach(function(r) {
+                    r.classList.remove('active-session');
+                });
+                return;
+            }
+            activeSession = sid;
+            document.querySelectorAll('.session-row').forEach(function(r) {
+                r.classList.remove('active-session');
+            });
+            if (el) el.classList.add('active-session');
+            htmx.ajax('GET', '/ui/sessions/' + encodeURIComponent(sid) + '/traces',
+                {target: '#session-detail', swap: 'innerHTML'});
+        }
+
+        function goToTraces(sid) {
+            sessionFilter = sid || '';
+            setActiveNav('traces');
+            var url = '/ui/page/traces' + (sessionFilter ? '?session=' + encodeURIComponent(sessionFilter) : '');
+            htmx.ajax('GET', url, {target: '#page-content', swap: 'innerHTML'});
+            history.pushState(null, '', '/traces' + (sessionFilter ? '?session=' + encodeURIComponent(sessionFilter) : ''));
+        }
+
+        function toggleExpand(id) {
+            const row = document.getElementById('expand-' + id);
+            if (!row) return;
+            if (row.style.display === 'none' || !row.style.display) {
+                row.style.display = 'table-row';
+                if (!row.dataset.loaded) {
+                    row.dataset.loaded = 'true';
+                    htmx.ajax('GET', '/ui/traces/' + id, {target: '#detail-' + id, swap: 'innerHTML'});
+                }
+            } else {
+                row.style.display = 'none';
+            }
+        }
+
+        function trimLiveRows() {
+            const tbody = document.getElementById('live-trace-body');
+            if (!tbody) return;
+            const rows = tbody.querySelectorAll('tr.expand-row');
+            for (let i = 50; i < rows.length; i++) {
+                const row = rows[i];
+                const expand = row.nextElementSibling;
+                if (expand) expand.remove();
+                row.remove();
+            }
+        }
+
+        document.addEventListener('htmx:sseMessage', function() {
+            trimLiveRows();
+        });
+
+        window.addEventListener('popstate', function() {
+            var path = window.location.pathname.replace(/^\//, '');
+            if (!PAGE_ROUTES[path]) return;
+            sessionFilter = '';
+            if (path === 'traces') {
+                var params = new URLSearchParams(window.location.search);
+                sessionFilter = params.get('session') || '';
+            }
+            activeSession = null;
+            setActiveNav(path);
+            htmx.ajax('GET', '/ui/page/' + path + window.location.search,
+                {target: '#page-content', swap: 'innerHTML'});
+        });
+    </script>
+</body>
+</html>

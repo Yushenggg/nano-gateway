@@ -1,0 +1,22 @@
+<div class="panel">
+    <div class="panel-header">
+        <span class="panel-title">Configuration</span>
+    </div>
+    <div style="padding: 18px; font-size: 12px; line-height: 1.8;">
+        <p style="color: var(--text-bright); margin-bottom: 12px;">Environment Variables</p>
+        <code style="display: block; padding: 14px; background: var(--bg); border-radius: 5px;">
+NANOGATEWAY_URL=https://api.openai.com/v1
+        </code>
+        <p style="color: var(--text-bright); margin-top: 20px; margin-bottom: 12px;">Or use .env file</p>
+        <code style="display: block; padding: 14px; background: var(--bg); border-radius: 5px;">
+# .env<br>
+NANOGATEWAY_URL=https://api.openai.com/v1
+        </code>
+        <p style="color: var(--text-bright); margin-top: 20px; margin-bottom: 12px;">Resolution Order</p>
+        <code style="display: block; padding: 14px; background: var(--bg); border-radius: 5px;">
+1. NANOGATEWAY_URL env var<br>
+2. nano-rules.yaml config file<br>
+3. Default (https://api.openai.com/v1)
+        </code>
+    </div>
+</div>
